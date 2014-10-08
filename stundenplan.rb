@@ -4,7 +4,7 @@ Bundler.require
 Dotenv.load
 require 'open-uri'
 
-def html_mail_data(link)
+def html_mail_data(content, link)
   data = {}
   data[:from] = "Vertretung <vertretung@#{ENV['MAILDOMAIN']}>"
   data[:to] = ENV['MAIL_TO']
