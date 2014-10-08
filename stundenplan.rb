@@ -23,13 +23,11 @@ def send_html_mail(content, link)
 end
 
 def tomorrow
-  week_day = Time.now.wday
-  week_day == 6 ? 0 : week_day + 1
+  DateTime.tomorrow.wday
 end
 
 def week_number
-  number = DateTime.now.cweek
-  tomorrow == 1 ? number + 1 : number
+  DateTime.tomorrow.cweek
 end
 
 def prepare_and_send_mail
