@@ -4,46 +4,98 @@ Bundler.require
 Dotenv.load
 require 'open-uri'
 
-def html_mail_data(content, link)
-  data = {}
-  data[:from] = "Vertretung <vertretung@#{ENV['MAILDOMAIN']}>"
-  data[:to] = ENV['MAIL_TO']
-  data[:subject] = 'Vertretungsplan-Änderung!'
-  data[:text] = "Änderungen im Vertretungsplan, siehe #{link}"
-  data[:html] = content
-  data
-end
+# This programs sends mail when there is a relevant
+# timetable entry for the next day
+# Author:: Stephan Rodemeier
+# Copyright:: Copyright (c) 2014 Stephan Rodemeier
+# License:: MIT License
+class VertretungsMailer
+  attr_reader :base_url, :timetable_url, :table
 
-def send_html_mail(content, link)
-  RestClient.post "https://api:#{ENV['MAILGUN_KEY']}@api.mailgun.net/v2/"\
-                  "#{ENV['MAILDOMAIN']}/messages",
-                  html_mail_data(content, link)
+  def initialize(
+    base_url_string = nil,
+    timetable_url_string = nil,
+    table_xpath_string = nil
+  )
+    @base_url       = base_url_string || default_base_url
+    @timetable_url  = timetable_url_string || default_timetable_url
+    table_xpath     = table_xpath_string || default_table_xpath
+    doc             = Nokogiri::HTML(open(timetable_url))
+    @table          = doc.xpath(table_xpath).first
+  end
+
+  def go
+    return false unless table_has_relevant_entry?
+    content = prepare_mail
+    send_mail content
+  end
+
+  private
+
+  def default_base_url
+    'http://stundenplan.mmbbs.de/plan1011/ver_kla'
+  end
+
+  def default_timetable_url
+    "#{base_url}/#{week_number}/w/w00040.htm"
+  end
+
+  def default_table_xpath
+    "//div[contains(id, 'vertretung')]//"\
+      "a[contains(name, #{tomorrow})]/following::table"
+  end
+
+  def html_mail_data(content, link)
+    data = {}
+    data[:from] = "Vertretung <vertretung@#{ENV['MAILDOMAIN']}>"
+    data[:to] = ENV['MAIL_TO']
+    data[:subject] = 'Vertretungsplan-Änderung!'
+    data[:text] = "Änderungen im Vertretungsplan, siehe #{link}"
+    data[:html] = content
+    data
+  end
+
+  def send_html_mail(content, link)
+    RestClient.post "https://api:#{ENV['MAILGUN_KEY']}@api.mailgun.net/v2/"\
+    "#{ENV['MAILDOMAIN']}/messages", html_mail_data(content, link)
+    puts 'mail sent'
   rescue => e
     puts e.response
+  end
+
+  def tomorrow
+    DateTime.tomorrow.wday
+  end
+
+  def week_number
+    if DateTime.now.wday.between?(1, 4)
+      DateTime.tomorrow.cweek
+    else
+      DateTime.tomorrow.cweek + 1
+    end
+  end
+
+  def table_has_relevant_entry?
+    table.to_s.include? "tr class=\"list\""
+  end
+
+  def prepare_mail_content
+    table_utf8 = table.to_s.encode('UTF-8')
+    css_magic = "<link rel=\"stylesheet\" href=\"#{base_url}/untisinfo.css\">"\
+      "<div id=\"vertretung\">"
+    prepare_html_for_mail(Nokogiri::HTML(css_magic + table_utf8).to_s)
+  end
+
+  def prepare_html_for_mail(html_content)
+    Premailer.new(html_content, with_html_string: true).to_inline_css
+  end
+
+  def send_mail(content)
+    send_html_mail(content, timetable_url)
+  end
 end
 
-def tomorrow
-  DateTime.tomorrow.wday
+if __FILE__ == $PROGRAM_NAME
+  mailer = VertretungsMailer.new
+  mailer.go
 end
-
-def week_number
-  DateTime.tomorrow.cweek
-end
-
-def prepare_and_send_mail
-  table_utf8 = @table.to_s.encode('UTF-8')
-  css_magic = "<link rel=\"stylesheet\" href=\"#{@base_url}/untisinfo.css\">"\
-              "<div id=\"vertretung\">"
-  html_content = Nokogiri::HTML(css_magic + table_utf8).to_s
-  content = Premailer.new(html_content, with_html_string: true).to_inline_css
-  send_html_mail content, @timetable_url
-end
-
-@base_url = 'http://stundenplan.mmbbs.de/plan1011/ver_kla'
-@timetable_url = "#{@base_url}/#{week_number}/w/w00040.htm"
-doc = Nokogiri::HTML(open(@timetable_url))
-table_xpath = "//div[contains(@id, 'vertretung')]//"\
-              "a[contains(@name, #{tomorrow})]/following::table"
-@table = doc.xpath(table_xpath).first
-
-prepare_and_send_mail if @table.to_s.include? "tr class=\"list\""
