@@ -1,0 +1,3 @@
+features:
+  send_mail: true
+  send_slack: true

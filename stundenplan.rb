@@ -22,6 +22,7 @@ class VertretungsMailer
     table_xpath     = table_xpath_string || default_table_xpath
     doc             = Nokogiri::HTML(open(timetable_url))
     @table          = doc.xpath(table_xpath).first
+    initialize_features
   end
 
   def go
@@ -31,6 +32,11 @@ class VertretungsMailer
   end
 
   private
+
+  def initialize_features
+    repo = Feature::Repository::YamlRepository.new('feature.yml')
+    Feature.set_repository repo
+  end
 
   def default_base_url
     'http://stundenplan.mmbbs.de/plan1011/ver_kla'
@@ -110,8 +116,13 @@ class VertretungsMailer
   end
 
   def send_notifications(mail_content)
-    send_html_mail(mail_content, timetable_url)
-    send_slack(timetable_url)
+    Feature.with(:send_mail) do
+      send_html_mail(mail_content, timetable_url)
+    end
+
+    Feature.with(:send_slack) do
+      send_slack(timetable_url)
+    end
   end
 end
 
