@@ -38,6 +38,7 @@ PLATFORMS
 DEPENDENCIES
   activesupport
   dotenv
+  json
   mail
   nokogiri
   premailer

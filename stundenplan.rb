@@ -26,8 +26,8 @@ class VertretungsMailer
 
   def go
     return false unless table_has_relevant_entry?
-    content = prepare_mail
-    send_mail content
+    content = prepare_mail_content
+    send_notifications content
   end
 
   private
@@ -57,8 +57,27 @@ class VertretungsMailer
 
   def send_html_mail(content, link)
     RestClient.post "https://api:#{ENV['MAILGUN_KEY']}@api.mailgun.net/v2/"\
-    "#{ENV['MAILDOMAIN']}/messages", html_mail_data(content, link)
+                    "#{ENV['MAILDOMAIN']}/messages",
+                    html_mail_data(content, link)
     puts 'mail sent'
+  rescue => e
+    puts e.response
+  end
+
+  def slack_data(link)
+    data = {}
+    data[:text] = 'Neuer Vertretungsplan!'\
+                  "<#{link}##{tomorrow}|Hier klicken> für Infos!"
+    data[:username] = ENV['SLACK_NAME']
+    data[:icon_emoji] = ':heavy_exclamation_mark:'
+    data[:channel] = ENV['SLACK_CHANNEL']
+    data.to_json
+  end
+
+  def send_slack(link)
+    RestClient.post "https://hooks.slack.com/services/#{ENV['SLACK_KEY']}",
+                    slack_data(link), content_type: :json, accept: :json
+    puts 'slack sent'
   rescue => e
     puts e.response
   end
@@ -90,8 +109,9 @@ class VertretungsMailer
     Premailer.new(html_content, with_html_string: true).to_inline_css
   end
 
-  def send_mail(content)
-    send_html_mail(content, timetable_url)
+  def send_notifications(mail_content)
+    send_html_mail(mail_content, timetable_url)
+    send_slack(timetable_url)
   end
 end
 
