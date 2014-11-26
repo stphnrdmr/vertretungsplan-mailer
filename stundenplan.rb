@@ -20,7 +20,7 @@ class VertretungsMailer
     @base_url       = base_url_string || default_base_url
     @timetable_url  = timetable_url_string || default_timetable_url
     table_xpath     = table_xpath_string || default_table_xpath
-    doc             = Nokogiri::HTML(open(timetable_url))
+    doc             = Nokogiri::HTML(open(@timetable_url))
     @table          = doc.xpath(table_xpath).first
     initialize_features
   end
@@ -47,8 +47,7 @@ class VertretungsMailer
   end
 
   def default_table_xpath
-    "//div[contains(id, 'vertretung')]//"\
-      "a[contains(name, #{tomorrow})]/following::table"
+    "(//table[@class='subst'])[#{tomorrow}]"
   end
 
   def html_mail_data(content, link)
@@ -72,7 +71,7 @@ class VertretungsMailer
 
   def slack_data(link)
     data = {}
-    data[:text] = 'Neuer Vertretungsplan!'\
+    data[:text] = 'Neuer Vertretungsplan! '\
                   "<#{link}##{tomorrow}|Hier klicken> für Infos!"
     data[:username] = ENV['SLACK_NAME']
     data[:icon_emoji] = ':heavy_exclamation_mark:'
