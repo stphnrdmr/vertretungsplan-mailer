@@ -5,22 +5,22 @@ Dotenv.load
 require 'open-uri'
 
 # This programs sends mail when there is a relevant
-# timetable entry for the next day
+# schedule entry for the next day
 # Author:: Stephan Rodemeier
 # Copyright:: Copyright (c) 2014 Stephan Rodemeier
 # License:: MIT License
 class VertretungsMailer
-  attr_reader :base_url, :timetable_url, :table
+  attr_reader :base_url, :schedule_url, :table
 
   def initialize(
     base_url_string = nil,
-    timetable_url_string = nil,
+    schedule_url_string = nil,
     table_xpath_string = nil
   )
     @base_url       = base_url_string || default_base_url
-    @timetable_url  = timetable_url_string || default_timetable_url
+    @schedule_url  = schedule_url_string || default_schedule_url
     table_xpath     = table_xpath_string || default_table_xpath
-    doc             = Nokogiri::HTML(open(@timetable_url))
+    doc             = Nokogiri::HTML(open(@schedule_url))
     @table          = doc.xpath(table_xpath).first
     initialize_features
   end
@@ -42,7 +42,7 @@ class VertretungsMailer
     'http://stundenplan.mmbbs.de/plan1011/ver_kla'
   end
 
-  def default_timetable_url
+  def default_schedule_url
     "#{base_url}/#{week_number}/w/w00040.htm"
   end
 
@@ -116,11 +116,11 @@ class VertretungsMailer
 
   def send_notifications(mail_content)
     Feature.with(:send_mail) do
-      send_html_mail(mail_content, timetable_url)
+      send_html_mail(mail_content, schedule_url)
     end
 
     Feature.with(:send_slack) do
-      send_slack(timetable_url)
+      send_slack(schedule_url)
     end
   end
 end
