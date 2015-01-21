@@ -93,9 +93,9 @@ class VertretungsMailer
 
   def week_number
     if DateTime.now.wday.between?(1, 4)
-      DateTime.tomorrow.cweek
+      DateTime.tomorrow.cweek.to_s.rjust(2,'0')
     else
-      DateTime.tomorrow.cweek + 1
+      (DateTime.tomorrow.cweek + 1).to_s.rjust(2,'0')
     end
   end
 
