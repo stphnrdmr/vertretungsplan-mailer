@@ -43,7 +43,7 @@ class VertretungsMailer
   end
 
   def default_schedule_url
-    "#{base_url}/#{week_number}/w/w00040.htm"
+    "#{base_url}/#{week_number}/w/w00030.htm"
   end
 
   def default_table_xpath
